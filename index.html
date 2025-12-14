@@ -101,6 +101,7 @@
       letter-spacing: 0.08em;
       font-weight: 1000;
       user-select:none;
+      min-height: 3.6rem;
     }
     .hint{
       margin-top: .45rem;
@@ -172,6 +173,7 @@
       border: 3px solid rgba(17,24,39,0.25);
       background: rgba(255,255,255,0.95);
       box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+      left: 50%;
     }
 
     .feedback{
@@ -195,7 +197,7 @@
 <body>
   <div class="app">
     <h1>Wort-Blitz 🎯</h1>
-    <div class="subtitle">Merken → Wort verschwindet → 6 Antworten. Punkte-Balken: Start bei 6, Ziel 11 (du) / 1 (CPU). Best of 7: zuerst 4 Runden gewinnt.</div>
+    <div class="subtitle">Wort merken → verschwindet → nach exakt 2 Sekunden kommen 6 Buttons. Balken: Start 6, Ziel 11 (du) / 1 (CPU). Best of 7: zuerst 4 Runden.</div>
 
     <!-- MENU -->
     <div id="menu" class="card">
@@ -209,7 +211,7 @@
       </div>
 
       <div class="grid3" style="margin-top:10px;">
-        <button id="class2" class="btn">2. Klasse<br><span style="font-weight:900; color:#374151;">(einfache Wörter)</span></button>
+        <button id="class2" class="btn">2. Klasse<br><span style="font-weight:900; color:#374151;">(einfache Wortliste)</span></button>
         <button id="class3" class="btn">3. Klasse<br><span style="font-weight:900; color:#374151;">(ganze Wortliste)</span></button>
 
         <div class="card" style="box-shadow:none; background:rgba(255,255,255,0.6);">
@@ -223,10 +225,6 @@
       <div class="row" style="margin-top:12px;">
         <button id="start" class="primary" disabled>▶️ Spiel starten</button>
         <span class="pill">🔊 Sounds: /audio/*.wav</span>
-      </div>
-
-      <div class="small" style="margin-top:10px; color:#6b7280; font-weight:900;">
-        Hinweis: Auf iPads/Phones muss Audio oft erst nach einem Klick starten (Browser-Regel).
       </div>
     </div>
 
@@ -243,8 +241,8 @@
       </div>
 
       <div class="wordStage">
-        <div class="bigWord" id="wordDisplay">WORT</div>
-        <div class="hint" id="phaseHint">Merken…</div>
+        <div class="bigWord" id="wordDisplay"></div>
+        <div class="hint" id="phaseHint">Wähle Start…</div>
       </div>
 
       <div class="barWrap">
@@ -253,7 +251,7 @@
           <span class="pill">Start bei <b>6</b></span>
           <span class="pill">Du gewinnst bei <b>11</b></span>
         </div>
-        <div class="meter" id="meter">
+        <div class="meter">
           <div class="marker" id="marker"></div>
         </div>
         <div class="tickRow">
@@ -264,7 +262,8 @@
       <div class="choices" id="choices"></div>
       <div class="feedback" id="feedback"></div>
 
-      <div id="endScreen" class class="hidden">
+      <!-- FIXED: korrektes Markup -->
+      <div id="endScreen" class="hidden" style="margin-top:12px;">
         <div class="bigResult" id="bigResult"></div>
         <div class="row" style="margin-top:12px; justify-content:center;">
           <button id="playAgain" class="primary">🔁 Nochmal spielen</button>
