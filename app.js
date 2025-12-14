@@ -52,9 +52,7 @@ async function playSound(name){
   try{
     a.currentTime = 0;
     await a.play();
-  }catch(e){
-    // Autoplay kann blocken – ok.
-  }
+  }catch(e){}
 }
 
 /* =========================================================
@@ -119,7 +117,8 @@ function updateStartEnabled(){
 
 function updateHeader(){
   roundInfo.textContent = `🏁 Runde ${round} / 7`;
-  scoreInfo.textContent = `🟦 Du ${playerRounds} : ${cpuRounds} CPU 🟥`;
+  // FIX: klare Rundenanzeige als 1:0 etc
+  scoreInfo.textContent = `🏆 Du ${playerRounds} : ${cpuRounds} CPU`;
 }
 
 function setMarker(score){
@@ -162,13 +161,17 @@ function setFeedback(text, type){
 function disableChoices(){
   [...choicesEl.querySelectorAll("button")].forEach(b => b.disabled = true);
 }
+
 function clearChoices(){
   choicesEl.innerHTML = "";
 }
 
 /* =========================================================
-   Round / Task Flow
+   WICHTIG: Logik
+   - meterScore wird NUR zu Beginn einer neuen Runde auf 6 gesetzt
+   - innerhalb der Runde verändert er sich pro Frage (+/-)
    ========================================================= */
+
 function startRound(){
   locked = true;
   clearTimers();
@@ -176,14 +179,15 @@ function startRound(){
   hideEl(endScreen);
   setFeedback("", "");
 
+  // FIX: Reset nur hier!
   meterScore = 6;
   setMarker(meterScore);
   updateHeader();
 
-  nextTask();
+  nextTaskInSameRound();
 }
 
-function nextTask(){
+function nextTaskInSameRound(){
   locked = true;
   clearTimers();
   clearChoices();
@@ -239,23 +243,20 @@ function onPlayerChoice(chosen){
   }
   setMarker(meterScore);
 
-  // CPU nach kurzer Denkpause
   timers.push(setTimeout(cpuTurn, 650));
 }
 
 function cpuTurn(){
-  // CPU “zieht” Richtung 1 (CPU) oder 11 (du) je nach Treffer
   const cpuCorrectChance = 0.55;
   const cpuOk = Math.random() < cpuCorrectChance;
 
   if(cpuOk){
-    meterScore = Math.max(1, meterScore - 1);   // CPU wird stärker
+    meterScore = Math.max(1, meterScore - 1);   // CPU zieht Richtung 1
   } else {
     meterScore = Math.min(11, meterScore + 1);  // CPU patzt
   }
   setMarker(meterScore);
 
-  // Runde entschieden?
   if(meterScore <= 1){
     cpuRounds++;
     updateHeader();
@@ -264,6 +265,7 @@ function cpuTurn(){
     timers.push(setTimeout(nextRoundOrGame, 1200));
     return;
   }
+
   if(meterScore >= 11){
     playerRounds++;
     updateHeader();
@@ -273,8 +275,8 @@ function cpuTurn(){
     return;
   }
 
-  // Sonst: nächste Aufgabe in derselben Runde (ohne Balken-Reset!)
-  timers.push(setTimeout(nextTask, 700));
+  // FIX: nächste Frage derselben Runde – OHNE Reset
+  timers.push(setTimeout(nextTaskInSameRound, 700));
 }
 
 function nextRoundOrGame(){
@@ -300,10 +302,10 @@ function gameOver(playerWon){
 
   showEl(endScreen);
   if(playerWon){
-    bigResult.textContent = "🏆 Du hast das Spiel gewonnen!";
+    bigResult.textContent = `🏆 Du hast gewonnen! (${playerRounds}:${cpuRounds})`;
     playSound("gamewon");
   } else {
-    bigResult.textContent = "😿 CPU hat das Spiel gewonnen.";
+    bigResult.textContent = `😿 CPU hat gewonnen. (${playerRounds}:${cpuRounds})`;
     playSound("gamelost");
   }
 }
@@ -318,13 +320,15 @@ function resetGameState(){
   round = 1;
   playerRounds = 0;
   cpuRounds = 0;
-  meterScore = 6;
 
+  meterScore = 6;
   setMarker(6);
+
   updateHeader();
   clearChoices();
   setFeedback("", "");
   hideEl(endScreen);
+
   wordDisplay.textContent = "";
   phaseHint.textContent = "";
 }
@@ -342,7 +346,6 @@ function goGame(){
   startRound();
 }
 
-/* Class select */
 class2.onclick = () => {
   classMode = "2";
   wordPool = WORDS_EASY;
@@ -357,7 +360,6 @@ class3.onclick = () => {
   updateStartEnabled();
 };
 
-/* Difficulty select */
 diffHard.onclick = () => {
   showMs = 1000;
   setSelected(diffHard, [diffHard, diffMid, diffEasy]);
@@ -375,14 +377,14 @@ diffEasy.onclick = () => {
 };
 
 startBtn.onclick = () => {
-  // Audio “unlock” durch Nutzeraktion
-  playSound("correct");
+  playSound("correct"); // audio unlock
   goGame();
 };
 
 backToMenu.onclick = () => goMenu();
 
 playAgain.onclick = () => {
+  // Einstellungen behalten, neues Match
   resetGameState();
   goGame();
 };
