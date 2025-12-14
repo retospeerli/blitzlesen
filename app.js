@@ -1,8 +1,6 @@
 /* =========================================================
-   WORTLISTE (300 Nomen nach Artikel) – aus deinem letzten Output
-   (Hier nur für das Spiel, flach als Wörter)
+   Wortlisten (aus deinem letzten Output)
    ========================================================= */
-
 const LIST_DER = [
   "Hund","Kater","Hase","Fuchs","Bär","Löwe","Affe","Vogel","Spatz","Adler","Fisch","Wal","Hai","Delfin","Igel","Hamster","Esel","Hahn","Stier","Bock","Wolf","Tiger","Elefant","Drache","Wurm","Käfer","Schmetterling","Marienkäfer","Regenwurm","Käfig","Baum","Ast","Strauch","Busch","Wald","Berg","See","Fluss","Bach","Weg","Garten","Hof","Park","Spielplatz","Strand","Schnee","Regen","Wind","Nebel","Stern","Mond","Himmel","Tag","Abend","Morgen","Sommer","Winter","Herbst","Frühling","Januar","Ball","Stein","Stock","Besen","Eimer","Becher","Teller","Löffel","Topf","Herd","Ofen","Tisch","Stuhl","Schrank","Teppich","Schlüssel","Stift","Bleistift","Pinsel","Kleber","Radiergummi","Rucksack","Koffer","Mantel","Pullover","Schal","Hut","Schuh","Stiefel","Socken","Gürtel","Knopf","Zug","Bus","Roller","Traktor","Hafen","Markt","Arzt","Freund"
 ];
@@ -15,21 +13,6 @@ const LIST_DAS = [
   "Kind","Baby","Mädchen","Buch","Heft","Blatt","Bild","Wort","Lied","Spiel","Haus","Zimmer","Bett","Kissen","Fenster","Dach","Tor","Auto","Fahrrad","Boot","Schiff","Flugzeug","Rad","Feuer","Wasser","Eis","Salz","Brot","Brötchen","Müsli","Obst","Gemüse","Ei","Mehl","Öl","Glas","Messer","Lineal","Papier","Geschenk","Geld","Ticket","Paket","Telefon","Handy","Radio","Licht","Foto","Video","Kabel","Tier","Pferd","Schaf","Schwein","Huhn","Kalb","Zebra","Kamel","Krokodil","Kaninchen","Meer","Feld","Dorf","Land","Wetter","Gewitter","Laub","Holz","Gras","Tal","Jahr","Datum","Ende","Ziel","Loch","Seil","Band","Tuch","Zeug","Bettlaken","Essen","Trinken","Frühstück","Mittagessen","Abendbrot","Bad","Sofa","Regal","Schloss","Kino","Büro","Museum","Krankenhaus","Hotel","Rathaus","Stadion","Abenteuer","Geheimnis","Rätsel","Signal"
 ];
 
-// Ganze Wortliste (3. Klasse)
-const WORDS_FULL = dedupe([...LIST_DER, ...LIST_DIE, ...LIST_DAS]);
-
-/* 2. Klasse (einfache Wortliste): kurze, häufige, gut bildhafte Wörter.
-   (Aus der großen Liste herausgegriffen: eher kurz, wenig Sonderzeichen, eher Alltag/Tiere)
-*/
-const WORDS_EASY = dedupe([
-  "Hund","Katze","Maus","Ente","Gans","Kuh","Ziege","Bär","Fisch","Vogel","Eule",
-  "Ball","Baum","Haus","Tor","Brot","Saft","Hand","Mund","Nase","Auge","Ohr","Zahn",
-  "Tisch","Bank","Stuhl","Tasse","Becher","Teller","Apfel","Birne","Reis","Suppe","Wasser",
-  "Stern","Mond","Regen","Wind","Wald","Weg","Berg","Sand","Stein","Gras",
-  "Buch","Heft","Blatt","Bild","Wort","Lied","Spiel","Kind","Baby","Bett","Kissen","Fenster","Auto","Rad",
-  "Feuer","Eis","Ei","Glas","Messer","Papier","Geld","Handy","Licht","Foto"
-]);
-
 function dedupe(arr){
   const m = new Map();
   for(const w of arr){
@@ -39,6 +22,17 @@ function dedupe(arr){
   }
   return [...m.values()];
 }
+
+const WORDS_FULL = dedupe([...LIST_DER, ...LIST_DIE, ...LIST_DAS]);
+
+const WORDS_EASY = dedupe([
+  "Hund","Katze","Maus","Ente","Gans","Kuh","Ziege","Bär","Fisch","Vogel","Eule",
+  "Ball","Baum","Haus","Tor","Brot","Saft","Hand","Mund","Nase","Auge","Ohr","Zahn",
+  "Tisch","Bank","Stuhl","Tasse","Becher","Teller","Apfel","Birne","Reis","Suppe","Wasser",
+  "Stern","Mond","Regen","Wind","Wald","Weg","Berg","Sand","Stein","Gras",
+  "Buch","Heft","Blatt","Bild","Wort","Lied","Spiel","Kind","Baby","Bett","Kissen","Fenster","Auto","Rad",
+  "Feuer","Eis","Ei","Glas","Messer","Papier","Geld","Handy","Licht","Foto"
+]);
 
 /* =========================================================
    Audio
@@ -59,7 +53,7 @@ async function playSound(name){
     a.currentTime = 0;
     await a.play();
   }catch(e){
-    // Browser blockt autoplay manchmal – ignorieren
+    // Autoplay kann blocken – ok.
   }
 }
 
@@ -94,32 +88,25 @@ const endScreen = document.getElementById("endScreen");
 const bigResult = document.getElementById("bigResult");
 
 /* =========================================================
-   Game State
+   State
    ========================================================= */
 let wordPool = WORDS_EASY;
-let classMode = null; // "2"|"3"
-let showMs = null;    // 1000|3000|5000
+let classMode = null;  // "2"|"3"
+let showMs = null;     // 1000|3000|5000
 
-let round = 1;        // 1..7
+let round = 1;         // 1..7
 let playerRounds = 0;
 let cpuRounds = 0;
 
-let meterScore = 6;   // 1..11, start 6
-let currentWord = "";
+let meterScore = 6;    // 1..11, start 6
 let correctWord = "";
 let locked = false;
-let timeouts = [];
 
-/* =========================================================
-   Helpers
-   ========================================================= */
-function show(el){ el.classList.remove("hidden"); }
-function hide(el){ el.classList.add("hidden"); }
+let timers = [];
+function clearTimers(){ timers.forEach(t=>clearTimeout(t)); timers=[]; }
 
-function clearAllTimers(){
-  for(const t of timeouts) clearTimeout(t);
-  timeouts = [];
-}
+function showEl(el){ el.classList.remove("hidden"); }
+function hideEl(el){ el.classList.add("hidden"); }
 
 function setSelected(btn, group){
   group.forEach(b => b.classList.remove("selected"));
@@ -136,8 +123,7 @@ function updateHeader(){
 }
 
 function setMarker(score){
-  // score 1..11 => 0..100%
-  const pct = ((score - 1) / 10) * 100;
+  const pct = ((score - 1) / 10) * 100; // 1..11 -> 0..100
   marker.style.left = `${pct}%`;
 }
 
@@ -155,15 +141,13 @@ function pickRandomWord(){
 }
 
 function makeChoices(correct){
-  const set = new Set([correct.toLowerCase()]);
+  const seen = new Set([correct.toLowerCase()]);
   const out = [correct];
-
-  // 5 Distraktoren
   while(out.length < 6){
     const w = pickRandomWord();
     const k = w.toLowerCase();
-    if(!set.has(k)){
-      set.add(k);
+    if(!seen.has(k)){
+      seen.add(k);
       out.push(w);
     }
   }
@@ -183,36 +167,42 @@ function clearChoices(){
 }
 
 /* =========================================================
-   Core Round Flow
+   Round / Task Flow
    ========================================================= */
-function beginRound(){
+function startRound(){
   locked = true;
-  clearAllTimers();
+  clearTimers();
   clearChoices();
-  hide(endScreen);
+  hideEl(endScreen);
   setFeedback("", "");
 
   meterScore = 6;
   setMarker(meterScore);
-
   updateHeader();
 
-  // Wort wählen
-  correctWord = pickRandomWord();
-  currentWord = correctWord;
+  nextTask();
+}
 
-  // Phase 1: Wort anzeigen
-  wordDisplay.textContent = currentWord;
+function nextTask(){
+  locked = true;
+  clearTimers();
+  clearChoices();
+  setFeedback("", "");
+
+  correctWord = pickRandomWord();
+
+  // Wort anzeigen
+  wordDisplay.textContent = correctWord;
   phaseHint.textContent = `Merken… (${Math.round(showMs/1000)}s)`;
 
   // Nach showMs: Wort ausblenden
-  timeouts.push(setTimeout(() => {
-    wordDisplay.textContent = " ";
+  timers.push(setTimeout(() => {
+    wordDisplay.textContent = "";
     phaseHint.textContent = "Warte… (2s)";
   }, showMs));
 
-  // Exakt 2s nach Verschwinden: Buttons zeigen
-  timeouts.push(setTimeout(() => {
+  // Exakt 2s später: Buttons anzeigen
+  timers.push(setTimeout(() => {
     phaseHint.textContent = "Wähle die richtige Antwort!";
     renderChoices();
     locked = false;
@@ -247,34 +237,31 @@ function onPlayerChoice(chosen){
     playSound("error");
     meterScore = Math.max(1, meterScore - 1);
   }
-
   setMarker(meterScore);
 
-  // CPU-Aktion (kleine Denkpause)
-  timeouts.push(setTimeout(() => cpuTurn(), 600));
+  // CPU nach kurzer Denkpause
+  timers.push(setTimeout(cpuTurn, 650));
 }
 
 function cpuTurn(){
-  // CPU trifft mit fixer "Trefferchance"
-  // (fair/spielbar: 55% richtig)
+  // CPU “zieht” Richtung 1 (CPU) oder 11 (du) je nach Treffer
   const cpuCorrectChance = 0.55;
   const cpuOk = Math.random() < cpuCorrectChance;
 
   if(cpuOk){
-    meterScore = Math.max(1, meterScore - 1); // CPU "zieht" Richtung 1
+    meterScore = Math.max(1, meterScore - 1);   // CPU wird stärker
   } else {
-    meterScore = Math.min(11, meterScore + 1); // CPU irrt → hilft dir indirekt
+    meterScore = Math.min(11, meterScore + 1);  // CPU patzt
   }
-
   setMarker(meterScore);
 
-  // Check Round End
+  // Runde entschieden?
   if(meterScore <= 1){
     cpuRounds++;
     updateHeader();
     setFeedback("CPU gewinnt die Runde 🟥", "err");
     playSound("roundlost");
-    timeouts.push(setTimeout(() => nextRoundOrGame(), 1200));
+    timers.push(setTimeout(nextRoundOrGame, 1200));
     return;
   }
   if(meterScore >= 11){
@@ -282,16 +269,15 @@ function cpuTurn(){
     updateHeader();
     setFeedback("Du gewinnst die Runde 🟦", "ok");
     playSound("roundwon");
-    timeouts.push(setTimeout(() => nextRoundOrGame(), 1200));
+    timers.push(setTimeout(nextRoundOrGame, 1200));
     return;
   }
 
-  // sonst: nächste Aufgabe in derselben Runde
-  timeouts.push(setTimeout(() => beginRound(), 700));
+  // Sonst: nächste Aufgabe in derselben Runde (ohne Balken-Reset!)
+  timers.push(setTimeout(nextTask, 700));
 }
 
 function nextRoundOrGame(){
-  // Best of 7 => first to 4 rounds
   if(playerRounds >= 4){
     gameOver(true);
     return;
@@ -301,24 +287,18 @@ function nextRoundOrGame(){
     return;
   }
 
-  round++;
-  if(round > 7){
-    // Falls es irgendwie 3:3 nach 6 Runden wäre, entscheidet 7. Runde.
-    // Durch first-to-4 wird das normalerweise vorher entschieden.
-    round = 7;
-  }
-
-  beginRound();
+  round = Math.min(7, round + 1);
+  startRound();
 }
 
 function gameOver(playerWon){
   locked = true;
-  clearAllTimers();
+  clearTimers();
   clearChoices();
-  phaseHint.textContent = "";
   wordDisplay.textContent = "";
+  phaseHint.textContent = "";
 
-  show(endScreen);
+  showEl(endScreen);
   if(playerWon){
     bigResult.textContent = "🏆 Du hast das Spiel gewonnen!";
     playSound("gamewon");
@@ -332,7 +312,7 @@ function gameOver(playerWon){
    Menu / Controls
    ========================================================= */
 function resetGameState(){
-  clearAllTimers();
+  clearTimers();
   locked = false;
 
   round = 1;
@@ -340,28 +320,29 @@ function resetGameState(){
   cpuRounds = 0;
   meterScore = 6;
 
-  setMarker(meterScore);
+  setMarker(6);
   updateHeader();
   clearChoices();
   setFeedback("", "");
-  hide(endScreen);
+  hideEl(endScreen);
+  wordDisplay.textContent = "";
+  phaseHint.textContent = "";
 }
 
 function goMenu(){
-  clearAllTimers();
-  hide(game);
-  show(menu);
+  hideEl(game);
+  showEl(menu);
   resetGameState();
 }
 
 function goGame(){
-  hide(menu);
-  show(game);
+  hideEl(menu);
+  showEl(game);
   resetGameState();
-  beginRound();
+  startRound();
 }
 
-/* Select class */
+/* Class select */
 class2.onclick = () => {
   classMode = "2";
   wordPool = WORDS_EASY;
@@ -376,7 +357,7 @@ class3.onclick = () => {
   updateStartEnabled();
 };
 
-/* Select difficulty */
+/* Difficulty select */
 diffHard.onclick = () => {
   showMs = 1000;
   setSelected(diffHard, [diffHard, diffMid, diffEasy]);
@@ -394,7 +375,7 @@ diffEasy.onclick = () => {
 };
 
 startBtn.onclick = () => {
-  // Audio "freischalten" durch Nutzeraktion (Browser-Regel)
+  // Audio “unlock” durch Nutzeraktion
   playSound("correct");
   goGame();
 };
@@ -402,11 +383,11 @@ startBtn.onclick = () => {
 backToMenu.onclick = () => goMenu();
 
 playAgain.onclick = () => {
-  // gleiche Einstellungen behalten
   resetGameState();
-  beginRound();
+  goGame();
 };
 
-/* init */
+/* Init */
 setMarker(6);
+updateHeader();
 updateStartEnabled();
