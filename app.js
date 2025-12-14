@@ -40,6 +40,7 @@ const WORDS_EASY = dedupe([
 const SND = {
   correct: new Audio("./audio/correct.wav"),
   error: new Audio("./audio/error.wav"),
+  start: new Audio("./audio/start.wav"),
   roundwon: new Audio("./audio/roundwon.wav"),
   roundlost: new Audio("./audio/roundlost.wav"),
   gamewon: new Audio("./audio/gamewon.wav"),
@@ -54,6 +55,13 @@ async function playSound(name){
     await a.play();
   }catch(e){}
 }
+
+/* =========================================================
+   Timing
+   ========================================================= */
+const POST_ANSWER_WAIT_MS = 1000;  // nach Antwort bis neues Wort
+const AFTER_HIDE_WAIT_MS  = 1000;  // nach Verschwinden bis Buttons
+const ANSWER_TIMEOUT_MS   = 10000; // 10s
 
 /* =========================================================
    DOM
@@ -77,6 +85,7 @@ const scoreInfo = document.getElementById("scoreInfo");
 
 const wordDisplay = document.getElementById("wordDisplay");
 const phaseHint = document.getElementById("phaseHint");
+const countdownEl = document.getElementById("countdown"); // NEU
 
 const choicesEl = document.getElementById("choices");
 const feedback = document.getElementById("feedback");
@@ -89,25 +98,48 @@ const bigResult = document.getElementById("bigResult");
    State
    ========================================================= */
 let wordPool = WORDS_EASY;
-let classMode = null;  // "2"|"3"
-let showMs = null;     // 1000|3000|5000
+let classMode = null;
+let showMs = null;
 
-let round = 1;         // 1..7
+let round = 1;
 let playerRounds = 0;
 let cpuRounds = 0;
 
-let meterScore = 6;    // 1..11, start 6
+let meterScore = 6;
 let correctWord = "";
 let locked = false;
 
-// Timer-IDs
 let timers = [];
 function clearTimers(){ timers.forEach(t=>clearTimeout(t)); timers=[]; }
 
-// Speziell: 10s Antwort-Timeout pro Frage
 let answerTimeout = null;
 function clearAnswerTimeout(){
   if(answerTimeout){ clearTimeout(answerTimeout); answerTimeout = null; }
+}
+
+/* Countdown state */
+let countdownTimer = null;
+function clearCountdown(){
+  if(countdownTimer){ clearInterval(countdownTimer); countdownTimer = null; }
+  if(countdownEl) countdownEl.textContent = "";
+}
+function startCountdown(seconds){
+  clearCountdown();
+  if(!countdownEl) return;
+
+  let remaining = seconds;
+  countdownEl.textContent = `⏳ ${remaining}`;
+
+  countdownTimer = setInterval(() => {
+    remaining -= 1;
+    if(remaining <= 0){
+      countdownEl.textContent = `⏳ 0`;
+      clearCountdown(); // Anzeige bleibt leer danach; Timeout wird separat behandelt
+      // wir lassen hier nichts auslösen, das macht answerTimeout
+      return;
+    }
+    countdownEl.textContent = `⏳ ${remaining}`;
+  }, 1000);
 }
 
 function showEl(el){ el.classList.remove("hidden"); }
@@ -128,7 +160,7 @@ function updateHeader(){
 }
 
 function setMarker(score){
-  const pct = ((score - 1) / 10) * 100; // 1..11 -> 0..100
+  const pct = ((score - 1) / 10) * 100;
   marker.style.left = `${pct}%`;
 }
 
@@ -167,26 +199,19 @@ function setFeedback(text, type){
 function disableChoices(){
   [...choicesEl.querySelectorAll("button")].forEach(b => b.disabled = true);
 }
-
 function clearChoices(){
   choicesEl.innerHTML = "";
 }
 
 /* =========================================================
-   STRIKTE LOGIK (nur Spieler beeinflusst Punkte)
-   - Rundenstart: meterScore=6
-   - Pro Frage:
-       richtig => +1
-       falsch ODER keine Antwort in 10s => -1
-   - Runde Ende:
-       11 => Spieler gewinnt Runde
-       1  => CPU gewinnt Runde
+   STRIKTE LOGIK
    ========================================================= */
 
 function startRound(){
   locked = true;
   clearTimers();
   clearAnswerTimeout();
+  clearCountdown();
   clearChoices();
   hideEl(endScreen);
   setFeedback("", "");
@@ -202,6 +227,7 @@ function nextTask(){
   locked = true;
   clearTimers();
   clearAnswerTimeout();
+  clearCountdown();
   clearChoices();
   setFeedback("", "");
 
@@ -210,26 +236,31 @@ function nextTask(){
   // Wort anzeigen
   wordDisplay.textContent = correctWord;
   phaseHint.textContent = `Merken… (${Math.round(showMs/1000)}s)`;
+  clearCountdown();
 
   // Nach showMs: Wort ausblenden
   timers.push(setTimeout(() => {
     wordDisplay.textContent = "";
-    phaseHint.textContent = "Warte… (2s)";
+    phaseHint.textContent = "Warte… (1s)";
+    clearCountdown();
   }, showMs));
 
-  // Exakt 2s später: Buttons anzeigen + 10s Timer starten
+  // Nach Verschwinden: 1s warten -> Buttons + Countdown + Timeout
   timers.push(setTimeout(() => {
-    phaseHint.textContent = "Wähle die richtige Antwort! (10s)";
+    phaseHint.textContent = "Wähle die richtige Antwort!";
     renderChoices();
     locked = false;
 
-    // 10s: Timeout => -1
-    answerTimeout = setTimeout(() => {
-      if(locked) return; // falls schon beantwortet
-      onNoAnswerTimeout();
-    }, 10000);
+    // Countdown sichtbar
+    startCountdown(Math.ceil(ANSWER_TIMEOUT_MS / 1000));
 
-  }, showMs + 2000));
+    // Timeout
+    answerTimeout = setTimeout(() => {
+      if(locked) return;
+      onNoAnswerTimeout();
+    }, ANSWER_TIMEOUT_MS);
+
+  }, showMs + AFTER_HIDE_WAIT_MS));
 }
 
 function renderChoices(){
@@ -244,8 +275,7 @@ function renderChoices(){
   });
 }
 
-function applyPlayerDelta(delta, reason){
-  // delta: +1 oder -1
+function applyDeltaAndContinue(delta){
   meterScore = Math.max(1, Math.min(11, meterScore + delta));
   setMarker(meterScore);
 
@@ -258,8 +288,9 @@ function applyPlayerDelta(delta, reason){
     locked = true;
     disableChoices();
     clearAnswerTimeout();
+    clearCountdown();
     timers.push(setTimeout(nextRoundOrGame, 1200));
-    return true;
+    return;
   }
   if(meterScore <= 1){
     cpuRounds++;
@@ -269,16 +300,19 @@ function applyPlayerDelta(delta, reason){
     locked = true;
     disableChoices();
     clearAnswerTimeout();
+    clearCountdown();
     timers.push(setTimeout(nextRoundOrGame, 1200));
-    return true;
+    return;
   }
 
-  // Runde läuft weiter -> nächste Frage
+  // Weiter: 1s warten + start.wav, dann nächstes Wort
   locked = true;
   disableChoices();
   clearAnswerTimeout();
-  timers.push(setTimeout(nextTask, 650));
-  return false;
+  clearCountdown();
+
+  playSound("start");
+  timers.push(setTimeout(nextTask, POST_ANSWER_WAIT_MS));
 }
 
 function onPlayerChoice(chosen){
@@ -286,28 +320,30 @@ function onPlayerChoice(chosen){
   locked = true;
   disableChoices();
   clearAnswerTimeout();
+  clearCountdown();
 
   const ok = chosen.toLowerCase() === correctWord.toLowerCase();
 
   if(ok){
     setFeedback("✅ Richtig! +1", "ok");
     playSound("correct");
-    applyPlayerDelta(+1, "correct");
+    applyDeltaAndContinue(+1);
   } else {
     setFeedback("❌ Falsch! -1", "err");
     playSound("error");
-    applyPlayerDelta(-1, "wrong");
+    applyDeltaAndContinue(-1);
   }
 }
 
 function onNoAnswerTimeout(){
-  // Spieler antwortet nicht innert 10s
   locked = true;
   disableChoices();
+  clearAnswerTimeout();
+  clearCountdown();
 
   setFeedback("⏱️ Zu langsam! -1", "err");
   playSound("error");
-  applyPlayerDelta(-1, "timeout");
+  applyDeltaAndContinue(-1);
 }
 
 function nextRoundOrGame(){
@@ -319,7 +355,6 @@ function nextRoundOrGame(){
     gameOver(false);
     return;
   }
-
   round = Math.min(7, round + 1);
   startRound();
 }
@@ -328,6 +363,7 @@ function gameOver(playerWon){
   locked = true;
   clearTimers();
   clearAnswerTimeout();
+  clearCountdown();
   clearChoices();
   wordDisplay.textContent = "";
   phaseHint.textContent = "";
@@ -348,6 +384,7 @@ function gameOver(playerWon){
 function resetGameState(){
   clearTimers();
   clearAnswerTimeout();
+  clearCountdown();
   locked = false;
 
   round = 1;
