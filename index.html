@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wort-Blitz – Best of 7</title>
+  <style>
+    :root{
+      font-family: "Comic Sans MS","Comic Neue","Segoe UI",system-ui,sans-serif;
+      background: radial-gradient(1200px 650px at 18% 12%, #eef2ff 0%, #fdf2f8 42%, #ecfeff 100%);
+    }
+    body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:18px; box-sizing:border-box; }
+    .app{
+      max-width: 980px; width: 100%;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(199,210,254,0.8);
+      border-radius: 20px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.10);
+      padding: 1.4rem 1.6rem;
+      box-sizing:border-box;
+    }
+    h1{ margin:0 0 .35rem 0; font-size:1.75rem; }
+    .subtitle{ margin:.2rem 0 1rem 0; color:#4b5563; font-weight:900; line-height:1.35; }
+
+    .card{
+      background: rgba(255,255,255,0.86);
+      border: 1px solid rgba(199,210,254,0.7);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.06);
+    }
+    .hidden{ display:none; }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .rowL{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+    .btn{
+      padding: .9rem .9rem;
+      border-radius: 18px;
+      border: 3px solid #c7d2fe;
+      background: linear-gradient(180deg, #e0f2fe 0%, #e0e7ff 100%);
+      cursor:pointer;
+      font-weight:1000;
+      font-size:1.05rem;
+      text-align:center;
+      font-family: "Comic Sans MS","Comic Neue","Segoe UI",system-ui,sans-serif;
+    }
+    .btn:hover{ filter: brightness(1.03); }
+    .btn.selected{
+      border-color:#4f46e5;
+      background: linear-gradient(180deg, #4f46e5 0%, #2563eb 100%);
+      color:#fff;
+      box-shadow: 0 10px 26px rgba(37,99,235,0.30);
+    }
+
+    .primary{
+      padding:.95rem 1.25rem;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+      color:#fff;
+      font-weight:1000;
+      font-size:1.15rem;
+      box-shadow: 0 10px 22px rgba(37,99,235,0.22);
+      font-family: "Comic Sans MS","Comic Neue","Segoe UI",system-ui,sans-serif;
+    }
+    .primary:disabled{ background:#9ca3af; box-shadow:none; cursor:not-allowed; }
+    .danger{
+      padding:.85rem 1rem;
+      border-radius:999px;
+      border:2px solid #fecaca;
+      background:#fff;
+      cursor:pointer;
+      font-weight:1000;
+      font-family: "Comic Sans MS","Comic Neue","Segoe UI",system-ui,sans-serif;
+    }
+    .danger:hover{ background:#fef2f2; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:.55rem .7rem; border-radius:999px;
+      border: 2px solid #c7d2fe; background:#eef2ff;
+      font-weight:1000;
+    }
+
+    .grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:.7rem; margin-top:.7rem; }
+    @media (max-width: 760px){ .grid3{ grid-template-columns: repeat(1, minmax(0,1fr)); } }
+
+    .wordStage{
+      text-align:center;
+      padding: 22px 12px;
+      border-radius: 18px;
+      border: 2px dashed rgba(199,210,254,0.95);
+      background: rgba(238,242,255,0.55);
+      margin-top: 12px;
+    }
+    .bigWord{
+      font-size: 3.2rem;
+      letter-spacing: 0.08em;
+      font-weight: 1000;
+      user-select:none;
+    }
+    .hint{
+      margin-top: .45rem;
+      color:#4b5563;
+      font-weight: 900;
+    }
+
+    .choices{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .7rem;
+      margin-top: 14px;
+    }
+    @media (max-width: 760px){ .choices{ grid-template-columns: repeat(2,1fr);} }
+
+    .choice{
+      padding: 1.0rem .8rem;
+      border-radius: 18px;
+      border: 3px solid #c7d2fe;
+      background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+      cursor:pointer;
+      font-weight:1000;
+      font-size:1.55rem;
+      text-align:center;
+      font-family: "Comic Sans MS","Comic Neue","Segoe UI",system-ui,sans-serif;
+    }
+    .choice:hover{ filter: brightness(1.02); }
+    .choice:disabled{ opacity:.55; cursor:default; }
+
+    .barWrap{
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(199,210,254,0.8);
+      background: rgba(255,255,255,0.75);
+    }
+    .barTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .meter{
+      position: relative;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(244,63,94,0.18), rgba(59,130,246,0.18));
+      border: 2px solid rgba(199,210,254,0.9);
+      overflow:hidden;
+      margin-top: 10px;
+    }
+    .tickRow{
+      display:flex;
+      justify-content:space-between;
+      font-weight:900;
+      color:#6b7280;
+      font-size:.85rem;
+      margin-top: 6px;
+      user-select:none;
+    }
+    .marker{
+      position:absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 3px solid rgba(17,24,39,0.25);
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+    }
+
+    .feedback{
+      min-height: 1.8rem;
+      margin-top: 10px;
+      font-weight: 1000;
+      font-size: 1.25rem;
+      text-align:center;
+    }
+    .ok{ color:#15803d; }
+    .err{ color:#b91c1c; }
+
+    .bigResult{
+      text-align:center;
+      font-size: 1.6rem;
+      font-weight: 1000;
+      padding: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Wort-Blitz 🎯</h1>
+    <div class="subtitle">Merken → Wort verschwindet → 6 Antworten. Punkte-Balken: Start bei 6, Ziel 11 (du) / 1 (CPU). Best of 7: zuerst 4 Runden gewinnt.</div>
+
+    <!-- MENU -->
+    <div id="menu" class="card">
+      <div class="row">
+        <div class="rowL">
+          <span class="pill">📚 Klasse wählen</span>
+        </div>
+        <div class="rowL">
+          <span class="pill">⏱️ Wort-Zeit</span>
+        </div>
+      </div>
+
+      <div class="grid3" style="margin-top:10px;">
+        <button id="class2" class="btn">2. Klasse<br><span style="font-weight:900; color:#374151;">(einfache Wörter)</span></button>
+        <button id="class3" class="btn">3. Klasse<br><span style="font-weight:900; color:#374151;">(ganze Wortliste)</span></button>
+
+        <div class="card" style="box-shadow:none; background:rgba(255,255,255,0.6);">
+          <div style="font-weight:1000; margin-bottom:8px;">Schwierigkeit</div>
+          <button id="diffHard" class="btn" style="width:100%;">Schwierig (1s)</button>
+          <button id="diffMid" class="btn" style="width:100%; margin-top:8px;">Mittel (3s)</button>
+          <button id="diffEasy" class="btn" style="width:100%; margin-top:8px;">Einfach (5s)</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="start" class="primary" disabled>▶️ Spiel starten</button>
+        <span class="pill">🔊 Sounds: /audio/*.wav</span>
+      </div>
+
+      <div class="small" style="margin-top:10px; color:#6b7280; font-weight:900;">
+        Hinweis: Auf iPads/Phones muss Audio oft erst nach einem Klick starten (Browser-Regel).
+      </div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game" class="card hidden">
+      <div class="row">
+        <div class="rowL">
+          <span class="pill" id="roundInfo">🏁 Runde 1 / 7</span>
+          <span class="pill" id="scoreInfo">🟦 Du 0 : 0 CPU 🟥</span>
+        </div>
+        <div class="rowL">
+          <button id="backToMenu" class="danger">🏠 Menü</button>
+        </div>
+      </div>
+
+      <div class="wordStage">
+        <div class="bigWord" id="wordDisplay">WORT</div>
+        <div class="hint" id="phaseHint">Merken…</div>
+      </div>
+
+      <div class="barWrap">
+        <div class="barTop">
+          <span class="pill">CPU gewinnt bei <b>1</b></span>
+          <span class="pill">Start bei <b>6</b></span>
+          <span class="pill">Du gewinnst bei <b>11</b></span>
+        </div>
+        <div class="meter" id="meter">
+          <div class="marker" id="marker"></div>
+        </div>
+        <div class="tickRow">
+          <span>1</span><span>3</span><span>5</span><span>7</span><span>9</span><span>11</span>
+        </div>
+      </div>
+
+      <div class="choices" id="choices"></div>
+      <div class="feedback" id="feedback"></div>
+
+      <div id="endScreen" class class="hidden">
+        <div class="bigResult" id="bigResult"></div>
+        <div class="row" style="margin-top:12px; justify-content:center;">
+          <button id="playAgain" class="primary">🔁 Nochmal spielen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
