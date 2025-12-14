@@ -100,8 +100,15 @@ let meterScore = 6;    // 1..11, start 6
 let correctWord = "";
 let locked = false;
 
+// Timer-IDs
 let timers = [];
 function clearTimers(){ timers.forEach(t=>clearTimeout(t)); timers=[]; }
+
+// Speziell: 10s Antwort-Timeout pro Frage
+let answerTimeout = null;
+function clearAnswerTimeout(){
+  if(answerTimeout){ clearTimeout(answerTimeout); answerTimeout = null; }
+}
 
 function showEl(el){ el.classList.remove("hidden"); }
 function hideEl(el){ el.classList.add("hidden"); }
@@ -117,7 +124,6 @@ function updateStartEnabled(){
 
 function updateHeader(){
   roundInfo.textContent = `🏁 Runde ${round} / 7`;
-  // FIX: klare Rundenanzeige als 1:0 etc
   scoreInfo.textContent = `🏆 Du ${playerRounds} : ${cpuRounds} CPU`;
 }
 
@@ -167,29 +173,35 @@ function clearChoices(){
 }
 
 /* =========================================================
-   WICHTIG: Logik
-   - meterScore wird NUR zu Beginn einer neuen Runde auf 6 gesetzt
-   - innerhalb der Runde verändert er sich pro Frage (+/-)
+   STRIKTE LOGIK (nur Spieler beeinflusst Punkte)
+   - Rundenstart: meterScore=6
+   - Pro Frage:
+       richtig => +1
+       falsch ODER keine Antwort in 10s => -1
+   - Runde Ende:
+       11 => Spieler gewinnt Runde
+       1  => CPU gewinnt Runde
    ========================================================= */
 
 function startRound(){
   locked = true;
   clearTimers();
+  clearAnswerTimeout();
   clearChoices();
   hideEl(endScreen);
   setFeedback("", "");
 
-  // FIX: Reset nur hier!
   meterScore = 6;
   setMarker(meterScore);
   updateHeader();
 
-  nextTaskInSameRound();
+  nextTask();
 }
 
-function nextTaskInSameRound(){
+function nextTask(){
   locked = true;
   clearTimers();
+  clearAnswerTimeout();
   clearChoices();
   setFeedback("", "");
 
@@ -205,11 +217,18 @@ function nextTaskInSameRound(){
     phaseHint.textContent = "Warte… (2s)";
   }, showMs));
 
-  // Exakt 2s später: Buttons anzeigen
+  // Exakt 2s später: Buttons anzeigen + 10s Timer starten
   timers.push(setTimeout(() => {
-    phaseHint.textContent = "Wähle die richtige Antwort!";
+    phaseHint.textContent = "Wähle die richtige Antwort! (10s)";
     renderChoices();
     locked = false;
+
+    // 10s: Timeout => -1
+    answerTimeout = setTimeout(() => {
+      if(locked) return; // falls schon beantwortet
+      onNoAnswerTimeout();
+    }, 10000);
+
   }, showMs + 2000));
 }
 
@@ -225,58 +244,70 @@ function renderChoices(){
   });
 }
 
+function applyPlayerDelta(delta, reason){
+  // delta: +1 oder -1
+  meterScore = Math.max(1, Math.min(11, meterScore + delta));
+  setMarker(meterScore);
+
+  // Runde entschieden?
+  if(meterScore >= 11){
+    playerRounds++;
+    updateHeader();
+    setFeedback("🎉 Runde gewonnen!", "ok");
+    playSound("roundwon");
+    locked = true;
+    disableChoices();
+    clearAnswerTimeout();
+    timers.push(setTimeout(nextRoundOrGame, 1200));
+    return true;
+  }
+  if(meterScore <= 1){
+    cpuRounds++;
+    updateHeader();
+    setFeedback("😿 Runde verloren!", "err");
+    playSound("roundlost");
+    locked = true;
+    disableChoices();
+    clearAnswerTimeout();
+    timers.push(setTimeout(nextRoundOrGame, 1200));
+    return true;
+  }
+
+  // Runde läuft weiter -> nächste Frage
+  locked = true;
+  disableChoices();
+  clearAnswerTimeout();
+  timers.push(setTimeout(nextTask, 650));
+  return false;
+}
+
 function onPlayerChoice(chosen){
   if(locked) return;
   locked = true;
   disableChoices();
+  clearAnswerTimeout();
 
   const ok = chosen.toLowerCase() === correctWord.toLowerCase();
 
   if(ok){
     setFeedback("✅ Richtig! +1", "ok");
     playSound("correct");
-    meterScore = Math.min(11, meterScore + 1);
+    applyPlayerDelta(+1, "correct");
   } else {
     setFeedback("❌ Falsch! -1", "err");
     playSound("error");
-    meterScore = Math.max(1, meterScore - 1);
+    applyPlayerDelta(-1, "wrong");
   }
-  setMarker(meterScore);
-
-  timers.push(setTimeout(cpuTurn, 650));
 }
 
-function cpuTurn(){
-  const cpuCorrectChance = 0.55;
-  const cpuOk = Math.random() < cpuCorrectChance;
+function onNoAnswerTimeout(){
+  // Spieler antwortet nicht innert 10s
+  locked = true;
+  disableChoices();
 
-  if(cpuOk){
-    meterScore = Math.max(1, meterScore - 1);   // CPU zieht Richtung 1
-  } else {
-    meterScore = Math.min(11, meterScore + 1);  // CPU patzt
-  }
-  setMarker(meterScore);
-
-  if(meterScore <= 1){
-    cpuRounds++;
-    updateHeader();
-    setFeedback("CPU gewinnt die Runde 🟥", "err");
-    playSound("roundlost");
-    timers.push(setTimeout(nextRoundOrGame, 1200));
-    return;
-  }
-
-  if(meterScore >= 11){
-    playerRounds++;
-    updateHeader();
-    setFeedback("Du gewinnst die Runde 🟦", "ok");
-    playSound("roundwon");
-    timers.push(setTimeout(nextRoundOrGame, 1200));
-    return;
-  }
-
-  // FIX: nächste Frage derselben Runde – OHNE Reset
-  timers.push(setTimeout(nextTaskInSameRound, 700));
+  setFeedback("⏱️ Zu langsam! -1", "err");
+  playSound("error");
+  applyPlayerDelta(-1, "timeout");
 }
 
 function nextRoundOrGame(){
@@ -296,6 +327,7 @@ function nextRoundOrGame(){
 function gameOver(playerWon){
   locked = true;
   clearTimers();
+  clearAnswerTimeout();
   clearChoices();
   wordDisplay.textContent = "";
   phaseHint.textContent = "";
@@ -315,6 +347,7 @@ function gameOver(playerWon){
    ========================================================= */
 function resetGameState(){
   clearTimers();
+  clearAnswerTimeout();
   locked = false;
 
   round = 1;
@@ -384,7 +417,6 @@ startBtn.onclick = () => {
 backToMenu.onclick = () => goMenu();
 
 playAgain.onclick = () => {
-  // Einstellungen behalten, neues Match
   resetGameState();
   goGame();
 };
